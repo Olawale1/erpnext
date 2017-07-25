@@ -52,6 +52,8 @@ class RequestforQuotation(BuyingController):
 
 	def on_submit(self):
 		frappe.db.set(self, 'status', 'Submitted')
+		for supplier in self.suppliers:
+			supplier.email_sent = 0
 
 	def on_cancel(self):
 		frappe.db.set(self, 'status', 'Cancelled')
@@ -66,6 +68,8 @@ class RequestforQuotation(BuyingController):
 
 				self.update_supplier_part_no(rfq_supplier)
 				self.supplier_rfq_mail(rfq_supplier, update_password_link, self.get_link())
+				rfq_supplier.email_sent = 1
+				rfq_supplier.save()
 
 	def get_link(self):
 		# RFQ link for supplier portal
@@ -96,7 +100,10 @@ class RequestforQuotation(BuyingController):
 		else:
 			contact = frappe.new_doc("Contact")
 			contact.first_name = rfq_supplier.supplier_name or rfq_supplier.supplier
-			contact.supplier = rfq_supplier.supplier
+			contact.append('links', {
+				'link_doctype': 'Supplier',
+				'link_name': rfq_supplier.supplier
+			})
 
 		if not contact.email_id and not contact.user:
 			contact.email_id = user.name
