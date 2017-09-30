@@ -1,3 +1,4 @@
+
 // Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 // License: GNU General Public License v3. See license.txt
 
@@ -13,6 +14,7 @@ frappe.ui.form.on("Purchase Order", {
 			'Stock Entry': 'Material to Supplier'
 		}
 	},
+
 	onload: function(frm) {
 		erpnext.queries.setup_queries(frm, "Warehouse", function() {
 			return erpnext.queries.warehouse(frm.doc);
@@ -20,7 +22,18 @@ frappe.ui.form.on("Purchase Order", {
 
 		frm.set_indicator_formatter('item_code',
 			function(doc) { return (doc.qty<=doc.received_qty) ? "green" : "orange" })
+	},
+});
 
+frappe.ui.form.on("Purchase Order Item", {
+	item_code: function(frm) {
+		frappe.call({
+			method: "get_last_purchase_rate",
+			doc: frm.doc,
+			callback: function(r, rt) {
+				frm.trigger('calculate_taxes_and_totals');
+			}
+		})
 	}
 });
 
@@ -86,8 +99,13 @@ erpnext.buying.PurchaseOrderController = erpnext.buying.BuyingController.extend(
 			if(flt(doc.per_billed)==0 && doc.status != "Delivered") {
 				cur_frm.add_custom_button(__('Payment'), cur_frm.cscript.make_payment_entry, __("Make"));
 			}
-			cur_frm.page.set_inner_btn_group_as_primary(__("Make"));
 
+			if(!doc.subscription) {
+				cur_frm.add_custom_button(__('Subscription'), function() {
+					erpnext.utils.make_subscription(doc.doctype, doc.name)
+				}, __("Make"))
+			}
+			cur_frm.page.set_inner_btn_group_as_primary(__("Make"));
 		}
 	},
 
@@ -209,17 +227,6 @@ erpnext.buying.PurchaseOrderController = erpnext.buying.BuyingController.extend(
 
 	delivered_by_supplier: function(){
 		cur_frm.cscript.update_status('Deliver', 'Delivered')
-	},
-
-	get_last_purchase_rate: function() {
-		frappe.call({
-			"method": "get_last_purchase_rate",
-			"doc": cur_frm.doc,
-			callback: function(r, rt) {
-				cur_frm.dirty();
-				cur_frm.cscript.calculate_taxes_and_totals();
-			}
-		})
 	}
 
 });

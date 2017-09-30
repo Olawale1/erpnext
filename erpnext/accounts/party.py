@@ -15,7 +15,8 @@ from frappe.contacts.doctype.address.address import (get_address_display,
 from frappe.contacts.doctype.contact.contact import get_contact_details, get_default_contact
 from erpnext.exceptions import PartyFrozen, PartyDisabled, InvalidAccountCurrency
 from erpnext.accounts.utils import get_fiscal_year
-from erpnext import get_default_currency
+from erpnext import get_default_currency, get_company_currency
+
 
 class DuplicatePartyAccountError(frappe.ValidationError): pass
 
@@ -43,6 +44,7 @@ def _get_party_details(party=None, account=None, party_type="Customer", company=
 		frappe.throw(_("Not permitted for {0}").format(party), frappe.PermissionError)
 
 	party = frappe.get_doc(party_type, party)
+	currency = party.default_currency if party.default_currency else get_company_currency(company)
 
 	set_address_details(out, party, party_type, doctype, company)
 	set_contact_details(out, party, party_type)
@@ -77,7 +79,7 @@ def set_address_details(out, party, party_type, doctype=None, company=None):
 		out.shipping_address = get_address_display(out["shipping_address_name"])
 		out.update(get_fetch_values(doctype, 'shipping_address_name', out.shipping_address_name))
 
-	if doctype and doctype in ['Sales Invoice']:
+	if doctype and doctype in ['Delivery Note', 'Sales Invoice']:
 		out.update(get_company_address(company))
 		if out.company_address:
 			out.update(get_fetch_values(doctype, 'company_address', out.company_address))
@@ -318,10 +320,14 @@ def set_taxes(party, party_type, posting_date, company, customer_group=None, sup
 	from erpnext.accounts.doctype.tax_rule.tax_rule import get_tax_template, get_party_details
 	args = {
 		party_type.lower(): party,
-		"customer_group":	customer_group,
-		"supplier_type":	supplier_type,
 		"company":			company
 	}
+
+	if customer_group:
+		args['customer_group'] = customer_group
+
+	if supplier_type:
+		args['supplier_type'] = supplier_type
 
 	if billing_address or shipping_address:
 		args.update(get_party_details(party, party_type, {"billing_address": billing_address, \

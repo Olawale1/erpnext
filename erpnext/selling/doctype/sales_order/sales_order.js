@@ -141,6 +141,12 @@ erpnext.selling.SalesOrderController = erpnext.selling.SellingController.extend(
 							function() { me.make_project() }, __("Make"));
 				}
 
+				if(!doc.subscription) {
+					this.frm.add_custom_button(__('Subscription'), function() {
+						erpnext.utils.make_subscription(doc.doctype, doc.name)
+					}, __("Make"))
+				}
+
 			} else {
 				if (this.frm.has_perm("submit")) {
 					// un-close
@@ -179,7 +185,7 @@ erpnext.selling.SalesOrderController = erpnext.selling.SellingController.extend(
 			doc: this.frm.doc,
 			method: 'get_production_order_items',
 			callback: function(r) {
-				if(!r.message.every(function(d) { return !!d.bom })) {
+				if(!r.message) {
 					frappe.msgprint({
 						title: __('Production Order not created'),
 						message: __('No Items with Bill of Materials to Manufacture'),
